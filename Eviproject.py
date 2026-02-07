@@ -1,32 +1,35 @@
-import sqlite3 # Database handling for storing the carbon footprint logs
-from datetime import datetime, date # For the date and time utilities
-import tkinter as tk # For graphic user interface framework
+import sqlite3
+from datetime import datetime, date
+import tkinter as tk
 from tkinter import ttk, messagebox
-from PIL import Image, ImageTk # For handling image and logo 
-# squlite database file
+from PIL import Image, ImageTk
+
+# Database file:
 FILE = "ecotrack.db"
-# image resources
+
 LOGO = "logo.jpg"
 IMG = "pic.jpg"
-# transport categories with emission elements (kg CO2 per km)
+
+# Transport categories with elements like time taken and km traveled:
 TRANSPORT = {
-    "Travel: Car": {"unit": "km", "kg_per_unit": 0.192},
-    "Travel: Bus": {"unit": "km", "kg_per_unit": 0.105},
-    "Travel: Metro/Train": {"unit": "km", "kg_per_unit": 0.041},
-    "Travel: Motorcycle": {"unit": "km", "kg_per_unit": 0.090},
+    "Travel: Car": {"unit": "km", "kg_per_unit": 0.192, "kg_per_hour": 0.30},
+    "Travel: Bus": {"unit": "km", "kg_per_unit": 0.105, "kg_per_hour": 0.10},
+    "Travel: Metro/Train": {"unit": "km", "kg_per_unit": 0.041, "kg_per_hour": 0.03},
+    "Travel: Motorcycle": {"unit": "km", "kg_per_unit": 0.090, "kg_per_hour": 0.15},
 }
-# rating for the daily carbon footprints
+
+# Rating for the daily carbon footprints:
 GOODLIMIT = 6.0
 OKLIMIT = 12.0
-# colors used accross the user interface
+
+# Colors used accross code:
 LIGREEN = "#DFF5D8"
 DRGREEN = "#1F5F3B"
 YLW = "#FAF9E1"
 DARK = "#1B3A2F"
 BRGREEN = "#8CCF9A"
 
-# Create the logs table if it does not already exist #
-
+# Create the logs table if it does not already exist:
 def createDtb():
     with sqlite3.connect(FILE) as conn:
         cur = conn.cursor()
@@ -37,6 +40,7 @@ def createDtb():
                 log_date TEXT NOT NULL,
                 category TEXT NOT NULL,
                 amount REAL NOT NULL,
+                duration_hours REAL NOT NULL DEFAULT 0,
                 kg_co2 REAL NOT NULL,
                 note TEXT
             )
@@ -44,16 +48,17 @@ def createDtb():
         )
         conn.commit()
 
-#  Calculate CO2 emissions based on category and distance
-def Emissions(category: str, amount: float) -> float:
-    perunit = TRANSPORT[category]["kg_per_unit"]
-    return round(amount * perunit, 3)
 
- # Format date as YYY-MM-DD for database stroage
+def Emissions(category: str, km: float, hr: float) -> float:
+    perunit = TRANSPORT[category]["kg_per_unit"]
+    perhr = TRANSPORT[category].get("kg_per_hour", 0.0)
+    return round((km * perunit) + (hr * perhr), 3)
+
+
 def fmtDate(d: date) -> str:
     return d.isoformat()  # YYYY-MM-DD
 
-# Return a foot print rating based on daily emission limits
+
 def totalLimit(total_kg: float) -> str:
     if total_kg <= GOODLIMIT:
         return "LOW (low footprint today)"
@@ -63,20 +68,26 @@ def totalLimit(total_kg: float) -> str:
         return "HIGH (very high footprint today, try reducing emissions)"
 
 
-class Main(tk.Tk): ## Main EcoTrack User Interface window
+def parse_hours(s: str) -> float:
+    s = s.strip()
+    if not s:
+        return 0.0
+    return float(s)
+
+
+class Main(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.title("EcoTrack - Carbon Footprint Monitor") # For setting up window properties
+        self.title("EcoTrack - Carbon Footprint Monitor")
         self.geometry("920x560")
         self.minsize(880, 520)
 
         self.configure(bg=LIGREEN)
-        # Initialize database
         createDtb()
 
         # --- Style ---
-        self.style = ttk.Style(self) # configuring ttk styles for a green eco-friendly theme
+        self.style = ttk.Style(self)
         try:
             self.style.theme_use("clam")
         except Exception:
@@ -84,11 +95,7 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
 
         self.style.configure("Green.TFrame", background=LIGREEN)
         self.style.configure("Green.TLabel", background=LIGREEN, foreground=DARK)
-        self.style.configure(
-            "Green.TLabelframe",
-            background=LIGREEN,
-            bordercolor=BRGREEN,
-        )
+        self.style.configure("Green.TLabelframe", background=LIGREEN, bordercolor=BRGREEN)
         self.style.configure(
             "Green.TLabelframe.Label",
             background=LIGREEN,
@@ -127,10 +134,17 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
         # --- Header ---
         header = ttk.Frame(self, padding=12, style="Green.TFrame")
         header.pack(fill="x")
+        ttk.Label(
+            header,
+            text="ECOTRACK",
+            font=("Segoe UI", 40),
+            style="Green.TLabel",
+        ).pack(side="left")
+
 
         ttk.Label(
             header,
-            text="Logs → CO₂ Used → View History",
+            text="Logs → CO₂ Used → View History \nSlogan -> Track with ECOTRACK",
             font=("Segoe UI", 10),
             style="Green.TLabel",
         ).pack(side="left")
@@ -143,7 +157,7 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
         except Exception as e:
             print("Logo not loaded:", e)
 
-        # --- Notebook / Tabs ---
+        # --- Tabs ---
         self.nb = ttk.Notebook(self)
         self.nb.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
@@ -153,15 +167,13 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
         self.nb.add(self.tab_log, text="Add logs")
         self.nb.add(self.tab_history, text="History")
 
-        # Build UI
         self.addLogs()
         self.historyBttn()
 
         # Initial load
         self.historyLoad()
         self.upt()
-     
-    # Creating a styled button with a colored background frame
+
     def btn(self, parent, text, command, side="left", padx=0, pady=0, anchor=None):
         bg = tk.Frame(parent, bg=DRGREEN, padx=4, pady=4)
         if anchor is not None:
@@ -172,7 +184,6 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
         ttk.Button(bg, text=text, style="Yellow.TButton", command=command).pack()
         return bg
 
-    # Building User Interface for adding new cabon footprints logs
     def addLogs(self):
         left = ttk.Frame(self.tab_log, style="Green.TFrame")
         left.pack(side="left", fill="y")
@@ -207,12 +218,17 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
         self.unit_label.grid(row=2, column=2, sticky="w", padx=(8, 0))
         self.unitLabel()
 
-        ttk.Label(form, text="Note (optional):", style="Green.TLabel").grid(row=3, column=0, sticky="w", pady=6)
+        ttk.Label(form, text="Time spent (hours):", style="Green.TLabel").grid(row=3, column=0, sticky="w", pady=6)
+        self.time_var = tk.StringVar(value="0")
+        ttk.Entry(form, textvariable=self.time_var, width=18).grid(row=3, column=1, sticky="w", pady=6)
+        ttk.Label(form, text="hours", style="Green.TLabel").grid(row=3, column=2, sticky="w", padx=(8, 0))
+
+        ttk.Label(form, text="Note (optional):", style="Green.TLabel").grid(row=4, column=0, sticky="w", pady=6)
         self.note_var = tk.StringVar(value="")
-        ttk.Entry(form, textvariable=self.note_var, width=28).grid(row=3, column=1, columnspan=2, sticky="w", pady=6)
+        ttk.Entry(form, textvariable=self.note_var, width=28).grid(row=4, column=1, columnspan=2, sticky="w", pady=6)
 
         btns = ttk.Frame(form, style="Green.TFrame")
-        btns.grid(row=4, column=0, columnspan=3, sticky="w", pady=(10, 0))
+        btns.grid(row=5, column=0, columnspan=3, sticky="w", pady=(10, 0))
 
         self.btn(btns, "Add Log", self.svLog, side="left")
         self.btn(btns, "Clear", self.reset, side="left", padx=8)
@@ -255,33 +271,36 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
         recent = ttk.LabelFrame(right, text="Today’s logs", padding=12, style="Green.TLabelframe")
         recent.pack(fill="both", expand=True, pady=(12, 0))
 
-        cols = ("id", "category", "amount", "kg")
+        cols = ("id", "category", "amount", "time", "kg")
         self.today_tree = ttk.Treeview(recent, columns=cols, show="headings", height=10)
+
         self.today_tree.heading("id", text="ID")
         self.today_tree.heading("category", text="Category")
         self.today_tree.heading("amount", text="Amount")
+        self.today_tree.heading("time", text="Time (h)")
         self.today_tree.heading("kg", text="kg CO₂")
 
         self.today_tree.column("id", width=90, anchor="w")
         self.today_tree.column("category", width=220, anchor="w")
         self.today_tree.column("amount", width=120, anchor="e")
+        self.today_tree.column("time", width=90, anchor="e")
         self.today_tree.column("kg", width=120, anchor="e")
+
         self.today_tree.pack(fill="both", expand=True)
 
-    # Update the unit label based on the selected transport category by the user
     def unitLabel(self):
         cat = self.cat_var.get()
         unit = TRANSPORT.get(cat, {}).get("unit", "")
         self.unit_label.config(text=unit)
-    # Reset the input firlds to the default values
+
     def reset(self):
         self.date_var.set(fmtDate(date.today()))
         self.cat_var.set(list(TRANSPORT.keys())[0])
         self.amount_var.set("0")
+        self.time_var.set("0")
         self.note_var.set("")
         self.unitLabel()
 
-    # validate the input and save new log data to the database
     def svLog(self):
         try:
             d = datetime.strptime(self.date_var.get().strip(), "%Y-%m-%d").date()
@@ -293,14 +312,18 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
             if amount <= 0:
                 raise ValueError("Amount must be > 0.")
 
-            kg = Emissions(cat, amount)
+            hrs = parse_hours(self.time_var.get())
+            if hrs < 0:
+                raise ValueError("Time must be ≥ 0.")
+
+            kg = Emissions(cat, amount, hrs)
             note = self.note_var.get().strip()
 
             with sqlite3.connect(FILE) as conn:
                 cur = conn.cursor()
                 cur.execute(
-                    "INSERT INTO logs (log_date, category, amount, kg_co2, note) VALUES (?, ?, ?, ?, ?)",
-                    (fmtDate(d), cat, amount, kg, note if note else None),
+                    "INSERT INTO logs (log_date, category, amount, duration_hours, kg_co2, note) VALUES (?, ?, ?, ?, ?, ?)",
+                    (fmtDate(d), cat, amount, hrs, kg, note if note else None),
                 )
                 conn.commit()
 
@@ -311,27 +334,28 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
 
         except Exception as e:
             messagebox.showerror("Error", str(e))
-    # for updating today's total carbon emissions and the table
+
     def upt(self):
         today = fmtDate(date.today())
         with sqlite3.connect(FILE) as conn:
             cur = conn.cursor()
             cur.execute(
-                "SELECT category, amount, kg_co2, id FROM logs WHERE log_date = ? ORDER BY id DESC",
+                "SELECT category, amount, duration_hours, kg_co2, id FROM logs WHERE log_date = ? ORDER BY id DESC",
                 (today,),
             )
             rows = cur.fetchall()
 
-        total = round(sum(r[2] for r in rows), 3)
+        # ✅ sum kg_co2 (index 3), not hours
+        total = round(sum(r[3] for r in rows), 3)
         self.today_total_lbl.config(text=f"{total:.3f} kg CO₂ today")
         self.today_rating_lbl.config(text=f"Rating: {totalLimit(total)}")
 
         for item in self.today_tree.get_children():
             self.today_tree.delete(item)
 
-        for cat, amount, kg, log_id in rows[:50]:
-            self.today_tree.insert("", "end", values=(log_id, cat, f"{amount:g}", f"{kg:.3f}"))
-    # creating history tab controld and its layout
+        for cat, amount, hrs, kg, log_id in rows[:50]:
+            self.today_tree.insert("", "end", values=(log_id, cat, f"{amount:g}", f"{hrs:g}", f"{kg:.3f}"))
+
     def historyBttn(self):
         top = ttk.Frame(self.tab_history, style="Green.TFrame")
         top.pack(fill="x")
@@ -350,12 +374,13 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
         self.history_total_lbl = ttk.Label(summary, text="—", font=("Segoe UI", 11, "bold"), style="Green.TLabel")
         self.history_total_lbl.pack(anchor="w")
 
-        cols = ("date", "category", "amount", "kg", "note", "id")
+        cols = ("date", "category", "amount", "time", "kg", "note", "id")
         self.hist_tree = ttk.Treeview(self.tab_history, columns=cols, show="headings")
 
         self.hist_tree.heading("date", text="Date")
         self.hist_tree.heading("category", text="Category")
         self.hist_tree.heading("amount", text="Amount")
+        self.hist_tree.heading("time", text="Time (h)")
         self.hist_tree.heading("kg", text="kg CO₂")
         self.hist_tree.heading("note", text="Note")
         self.hist_tree.heading("id", text="ID")
@@ -363,15 +388,16 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
         self.hist_tree.column("date", width=110, anchor="w")
         self.hist_tree.column("category", width=260, anchor="w")
         self.hist_tree.column("amount", width=110, anchor="e")
+        self.hist_tree.column("time", width=90, anchor="e")
         self.hist_tree.column("kg", width=110, anchor="e")
         self.hist_tree.column("note", width=220, anchor="w")
         self.hist_tree.column("id", width=70, anchor="e")
 
         self.hist_tree.pack(fill="both", expand=True, pady=(10, 0))
-    # for loading logs from the database based on the date filter
+
     def historyLoad(self):
         f = self.filter_date_var.get().strip()
-        query = "SELECT log_date, category, amount, kg_co2, COALESCE(note,''), id FROM logs"
+        query = """SELECT log_date, category, amount, duration_hours, kg_co2, COALESCE(note,''), id FROM logs"""
         params = ()
         if f:
             try:
@@ -393,11 +419,14 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
 
         total = 0.0
         for r in rows:
-            total += r[3]
-            self.hist_tree.insert("", "end", values=(r[0], r[1], f"{r[2]:g}", f"{r[3]:.3f}", r[4], r[5]))
+            total += r[4]
+            self.hist_tree.insert(
+                "", "end",
+                values=(r[0], r[1], f"{r[2]:g}", f"{r[3]:g}", f"{r[4]:.3f}", r[5], r[6])
+            )
 
         self.history_total_lbl.config(text=f"Total shown: {total:.3f} kg CO₂")
-    # for deleting the selected log data after the confirmation
+
     def deleteLog(self):
         sel = self.hist_tree.selection()
         if not sel:
@@ -418,14 +447,6 @@ class Main(tk.Tk): ## Main EcoTrack User Interface window
         self.historyLoad()
         self.upt()
 
-# for starting the EcoTrack user interface
+
 if __name__ == "__main__":
-    Main().mainloop()           
-    
-
-
-
-
-
-
-
+    Main().mainloop()
