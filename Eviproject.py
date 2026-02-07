@@ -1,11 +1,12 @@
-import sqlite3
-from datetime import datetime, date
-import tkinter as tk
-from tkinter import ttk, messagebox
-from PIL import Image, ImageTk
+import sqlite3 # handling for storing the carbon footprint logs
+from datetime import datetime, date # For the Date and time utilities
+import tkinter as tk # for Graphic User Interface framework
+from tkinter import ttk, messagebox 
+from PIL import Image, ImageTk # For handling the image and logo
 
+# sqlite database file
 FILE = "ecotrack.db"
-
+#Image resources
 LOGO = "logo.jpg"
 IMG = "pic.jpg"
 
@@ -416,6 +417,7 @@ class Main(tk.Tk):
 if __name__ == "__main__":
     Main().mainloop()           
     
+
 
 
 
