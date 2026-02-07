@@ -1,30 +1,31 @@
-import sqlite3
-from datetime import datetime, date
-import tkinter as tk
+import sqlite3 # Database handling for storing the carbon footprint logs
+from datetime import datetime, date # For the date and time utilities
+import tkinter as tk # For graphic user interface framework
 from tkinter import ttk, messagebox
-from PIL import Image, ImageTk
-
+from PIL import Image, ImageTk # For handling image and logo 
+# squlite database file
 FILE = "ecotrack.db"
-
+# image resources
 LOGO = "logo.jpg"
 IMG = "pic.jpg"
-
+# transport categories with emission elements (kg CO2 per km)
 TRANSPORT = {
     "Travel: Car": {"unit": "km", "kg_per_unit": 0.192},
     "Travel: Bus": {"unit": "km", "kg_per_unit": 0.105},
     "Travel: Metro/Train": {"unit": "km", "kg_per_unit": 0.041},
     "Travel: Motorcycle": {"unit": "km", "kg_per_unit": 0.090},
 }
-
+# rating for the daily carbon footprints
 GOODLIMIT = 6.0
 OKLIMIT = 12.0
-
+# colors used accross the user interface
 LIGREEN = "#DFF5D8"
 DRGREEN = "#1F5F3B"
 YLW = "#FAF9E1"
 DARK = "#1B3A2F"
 BRGREEN = "#8CCF9A"
 
+# Create the logs table if it does not already exist #
 
 def createDtb():
     with sqlite3.connect(FILE) as conn:
@@ -43,16 +44,16 @@ def createDtb():
         )
         conn.commit()
 
-
+#  Calculate CO2 emissions based on category and distance
 def Emissions(category: str, amount: float) -> float:
     perunit = TRANSPORT[category]["kg_per_unit"]
     return round(amount * perunit, 3)
 
-
+ # Format date as YYY-MM-DD for database stroage
 def fmtDate(d: date) -> str:
     return d.isoformat()  # YYYY-MM-DD
 
-
+# Return a foot print rating based on daily emission limits
 def totalLimit(total_kg: float) -> str:
     if total_kg <= GOODLIMIT:
         return "LOW (low footprint today)"
@@ -416,6 +417,7 @@ class Main(tk.Tk):
 if __name__ == "__main__":
     Main().mainloop()           
     
+
 
 
 
