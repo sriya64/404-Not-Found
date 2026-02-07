@@ -54,7 +54,7 @@ def Emissions(category: str, km: float, hr: float) -> float:
     perhr = TRANSPORT[category].get("kg_per_hour", 0.0)
     return round((km * perunit) + (hr * perhr), 3)
 
-# Format date as YY-MM-DD for database stroage
+# Format date as YY-MM-DD for database storage
 def fmtDate(d: date) -> str:
     return d.isoformat() 
 
@@ -87,7 +87,7 @@ class Main(tk.Tk): # Main EcoTrack User Interface window
         createDtb() # Creating database on startup
 
         # --- Style ---
-        self.style = ttk.Style(self) # Configuring ttk styles for a green eco- friendly
+        self.style = ttk.Style(self) # Configuring ttk styles for a green eco- friendly layout
         try:
             self.style.theme_use("clam")
         except Exception:
@@ -131,7 +131,7 @@ class Main(tk.Tk): # Main EcoTrack User Interface window
             background=[("active", "#F1F0D2"), ("pressed", "#E7E6C2")],
         )
 
-        # Header section whcih includes the title, slogan, and the logo
+        # Header section which includes the title, slogan, and the logo
         header = ttk.Frame(self, padding=12, style="Green.TFrame")
         header.pack(fill="x")
         ttk.Label(
@@ -456,4 +456,5 @@ class Main(tk.Tk): # Main EcoTrack User Interface window
 # For starting the EcoTrack user interface
 if __name__ == "__main__":
     Main().mainloop()
+
 
