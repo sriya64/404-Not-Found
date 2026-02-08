@@ -73,15 +73,17 @@ def totalLimit(total_kg: float) -> str:
 
 
 # Convert hours input to float, defaulting to 0 if nothing put
-def parse_hours(s: str) -> float:
+def crovertHours(s: str) -> float:
     s = s.strip()
     if not s:
         return 0.0
-    return float(s)
+    try:
+        return float(s)
+    except ValueError:
+        raise ValueError("Time spent (hours) must be a number")
 
 
-
-def good_streak_ending_today() -> int:
+def streakShow() -> int:
     streak = 0
     day = date.today()
 
@@ -92,7 +94,7 @@ def good_streak_ending_today() -> int:
             day_s = fmtDate(day)
             cur.execute(
                 "SELECT COUNT(*), COALESCE(SUM(kg_co2), 0) FROM logs WHERE log_date = ?",
-                (day_s,),#How many logs exist and total CO2
+                (day_s,),
             )
             count, total = cur.fetchone()
             total = float(total or 0.0)
@@ -113,7 +115,7 @@ def good_streak_ending_today() -> int:
 
 class Main(tk.Tk):  # Main EcoTrack User Interface window
     def __init__(self):
-        super().__init__()  # Initialize main window settings
+        super().__init__()
 
         self.title("EcoTrack - Carbon Footprint Monitor")
         self.geometry("920x560")
@@ -180,7 +182,7 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
 
         ttk.Label(
             header,
-            text="Logs → CO₂ Used → View History \nSlogan -> Track with ECOTRACK",
+            text="Logs → View History  → Quiz \nSlogan -> Track with ECOTRACK",
             font=("Segoe UI", 10),
             style="Green.TLabel",
         ).pack(side="left")
@@ -199,17 +201,113 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
 
         self.tab_log = ttk.Frame(self.nb, padding=12, style="Green.TFrame")
         self.tab_history = ttk.Frame(self.nb, padding=12, style="Green.TFrame")
+        self.tab_quiz = ttk.Frame(self.nb, padding=12, style="Green.TFrame")
 
         self.nb.add(self.tab_log, text="Add logs")
         self.nb.add(self.tab_history, text="History")
+        self.nb.add(self.tab_quiz, text="Quiz")
 
         self.addLogs()
         self.historyBttn()
+        self.quiz()
 
         self.historyLoad()
         self.upt()
 
-    # Styled button with a colored frame
+    def quiz(self):
+        ttk.Label(
+            self.tab_quiz,
+            text="Quiz",
+            style="BoldGreen.TLabel",
+        ).pack(anchor="w", pady=(0, 10))
+
+        self.q1_var = tk.StringVar(value="")
+        self.q2_var = tk.StringVar(value="")
+        self.q3_var = tk.StringVar(value="")
+
+        q1 = ttk.LabelFrame(
+            self.tab_quiz,
+            text="1) Which trasport is best for the environment?",
+            padding=12,
+            style="Green.TLabelframe",
+        )
+        q1.pack(fill="x", pady=8)
+
+        ttk.Radiobutton(q1, text="a) Car", value="Car", variable=self.q1_var).pack(anchor="w", pady=2)
+        ttk.Radiobutton(q1, text="b) Metro/Train", value="Metro/Train", variable=self.q1_var).pack(anchor="w", pady=2)
+        ttk.Radiobutton(q1, text="c) Bus", value="Bus", variable=self.q1_var).pack(anchor="w", pady=2)
+        ttk.Radiobutton(q1, text="d) Motorcycle", value="Motorcycle", variable=self.q1_var).pack(anchor="w", pady=2)
+
+        q2 = ttk.LabelFrame(
+            self.tab_quiz,
+            text="2) Would you recommend our app to people?",
+            padding=12,
+            style="Green.TLabelframe",
+        )
+        q2.pack(fill="x", pady=8)
+
+        ttk.Radiobutton(q2, text="a) Definitely", value="Definitely", variable=self.q2_var).pack(anchor="w", pady=2)
+        ttk.Radiobutton(q2, text="b) Maybe", value="Maybe", variable=self.q2_var).pack(anchor="w", pady=2)
+        ttk.Radiobutton(q2, text="c) Not sure", value="Not sure", variable=self.q2_var).pack(anchor="w", pady=2)
+        ttk.Radiobutton(q2, text="d) No", value="No", variable=self.q2_var).pack(anchor="w", pady=2)
+
+        q3 = ttk.LabelFrame(
+            self.tab_quiz,
+            text="3) What do you think about our App?",
+            padding=12,
+            style="Green.TLabelframe",
+        )
+        q3.pack(fill="x", pady=8)
+
+        ttk.Radiobutton(
+            q3,
+            text="a) Its amazing! Very easy and nice to use",
+            value="Very easy and nice",
+            variable=self.q3_var,
+        ).pack(anchor="w", pady=2)
+        ttk.Radiobutton(q3, text="b) Its easy to use", value="Easy", variable=self.q3_var).pack(anchor="w", pady=2)
+        ttk.Radiobutton(q3, text="c) Its ok! A bit confusing", value="Neutral", variable=self.q3_var).pack(anchor="w", pady=2)
+        ttk.Radiobutton(q3, text="d) Its Hard to use", value="Difficult", variable=self.q3_var).pack(anchor="w", pady=2)
+
+        btn_row = ttk.Frame(self.tab_quiz, style="Green.TFrame")
+        btn_row.pack(fill="x", pady=(10, 0))
+
+        self.btn(btn_row, "Submit", self.submitQuiz, side="left")
+        self.btn(btn_row, "Clear", self.clearQuiz, side="left", padx=8)
+
+    def submitQuiz(self):
+        if not self.q1_var.get() or not self.q2_var.get() or not self.q3_var.get():
+            messagebox.showerror("Quiz", "Please answer all 3 questions")
+            return
+
+        if self.q1_var.get() == "Metro/Train":
+            msg1 = "Q1: Correct!"
+        else:
+            msg1 = "Q1: Nice opinion! But on a general scale, metro/trains are considered better for the environment."
+
+        # Q2
+        
+        msg2 = "Q2: Thank you! Will take that into consideration."
+
+        msg3 = "Q3: Thank you for your feedback!"
+
+        final = (
+            f"{msg1}\n\n"
+            f"{msg2}\n\n"
+            f"{msg3}\n\n"
+            "Your answers:\n"
+            f" Q1: {self.q1_var.get()}\n"
+            f" Q2: {self.q2_var.get()}\n"
+            f" Q3: {self.q3_var.get()}"
+        )
+        messagebox.showinfo("Results", final)
+
+    def clearQuiz(self):
+        self.q1_var.set("")
+        self.q2_var.set("")
+        self.q3_var.set("")
+
+    # SWith Colored Frame
     def btn(self, parent, text, command, side="left", padx=0, pady=0, anchor=None):
         bg = tk.Frame(parent, bg=DRGREEN, padx=4, pady=4)
         if anchor is not None:
@@ -220,22 +318,19 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
         ttk.Button(bg, text=text, style="Yellow.TButton", command=command).pack()
         return bg
 
-
     def showStreak(self):
-        streak = good_streak_ending_today()
+        streak = streakShow()
         if streak == 0:
             msg = (
                 "Streak: 0\n\n"
-                "To start a streak:\n"
-                f"• Log at least 1 activity today\n"
-                f"• Keep total ≤ {GOODLIMIT} kg CO₂"
+                "Add one category today to gain a streak:\n"
+                f"Keep total emmisions ≤ {GOODLIMIT} kg CO₂"
             )
         else:
             msg = (
-                f"Streak: {streak} day{'s' if streak != 1 else ''} \n\n"
-                "Rules:\n"
-                "• Each day must have at least 1 log\n"
-                f"• Daily total ≤ {GOODLIMIT} kg CO₂"
+                f"Streak: {streak} day{'s' if streak != 1 else ''}\n\n"
+                "Each day must have at least 1 log\n"
+                f"Daily total ≤ {GOODLIMIT} kg CO₂"
             )
         messagebox.showinfo("Streak", msg)
 
@@ -266,7 +361,7 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
         self.cat_combo.grid(row=1, column=1, sticky="w", pady=6)
         self.cat_combo.bind("<<ComboboxSelected>>", lambda e: self.unitLabel())
 
-        ttk.Label(form, text="Amount:", style="Green.TLabel").grid(row=2, column=0, sticky="w", pady=6)
+        ttk.Label(form, text="Distance:", style="Green.TLabel").grid(row=2, column=0, sticky="w", pady=6)
         self.amount_var = tk.StringVar(value="0")
         ttk.Entry(form, textvariable=self.amount_var, width=18).grid(row=2, column=1, sticky="w", pady=6)
 
@@ -286,10 +381,9 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
         btns = ttk.Frame(form, style="Green.TFrame")
         btns.grid(row=5, column=0, columnspan=3, sticky="w", pady=(10, 0))
 
-        self.btn(btns, "Add Log", self.svLog, side="left")
+        self.btn(btns, "Add", self.svLog, side="left")
         self.btn(btns, "Clear", self.reset, side="left", padx=8)
 
-        # Today’s total + rating
         preview = ttk.LabelFrame(right, text="Today’s total + rating", padding=12, style="Green.TLabelframe")
         preview.pack(fill="x")
 
@@ -305,10 +399,9 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
         self.today_rating_lbl = ttk.Label(text_frame, text="—", style="Green.TLabel")
         self.today_rating_lbl.pack(anchor="w", pady=(6, 0))
 
-        # streak button
         self.streak_btn = ttk.Button(
             text_frame,
-            text="Good-day streak: —",
+            text="Streak: ",
             style="Yellow.TButton",
             command=self.showStreak,
         )
@@ -316,7 +409,7 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
 
         self.limits_lbl = ttk.Label(
             text_frame,
-            text=f"Limits: Good ≤ {GOODLIMIT} kg/day | OK ≤ {OKLIMIT} kg/day | High > {OKLIMIT}",
+            text=f"Limits: Good ≤ {GOODLIMIT} kg/day \n OK ≤ {OKLIMIT} kg/day \n High > {OKLIMIT}",
             style="SmallGreen.TLabel",
         )
         self.limits_lbl.pack(anchor="w", pady=(6, 0))
@@ -378,7 +471,7 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
             if amount <= 0:
                 raise ValueError("Amount must be > 0.")
 
-            hrs = parse_hours(self.time_var.get())
+            hrs = crovertHours(self.time_var.get())
             if hrs < 0:
                 raise ValueError("Time must be ≥ 0.")
 
@@ -415,9 +508,9 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
         self.today_total_lbl.config(text=f"{total:.3f} kg CO₂ today")
         self.today_rating_lbl.config(text=f"Rating: {totalLimit(total)}")
 
-        # update streak button text
-        streak = good_streak_ending_today()
-        self.streak_btn.config(text=f"Good-day streak: {streak} day{'s' if streak != 1 else ''}")
+
+        s = streakShow()
+        self.streak_btn.config(text=f"Streak: {s} day{'s' if s != 1 else ''}")
 
         for item in self.today_tree.get_children():
             self.today_tree.delete(item)
@@ -429,13 +522,13 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
         top = ttk.Frame(self.tab_history, style="Green.TFrame")
         top.pack(fill="x")
 
-        ttk.Label(top, text="Filter date (YYYY-MM-DD or blank for all):", style="Green.TLabel").pack(side="left")
+        ttk.Label(top, text="Filter Date (YYYY-MM-DD or blank for all):", style="Green.TLabel").pack(side="left")
 
         self.filter_date_var = tk.StringVar(value="")
         ttk.Entry(top, textvariable=self.filter_date_var, width=16).pack(side="left", padx=8)
 
         self.btn(top, "Apply", self.historyLoad, side="left")
-        self.btn(top, "Delete Selected Log", self.deleteLog, side="left", padx=8)
+        self.btn(top, "Delete Log", self.deleteLog, side="left", padx=8)
 
         summary = ttk.Frame(self.tab_history, style="Green.TFrame")
         summary.pack(fill="x", pady=(10, 0))
@@ -500,7 +593,7 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
     def deleteLog(self):
         sel = self.hist_tree.selection()
         if not sel:
-            messagebox.showinfo("Delete", "Select a row first.")
+            messagebox.showinfo("Delete", "Select a log first.")
             return
 
         values = self.hist_tree.item(sel[0], "values")
