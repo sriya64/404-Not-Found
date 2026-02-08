@@ -1,10 +1,10 @@
-import sqlite3 # For datbase handling for carbon foot print logs
-from datetime import datetime, date # For the date and time utilities
-import tkinter as tk # For graphic User Interface framework
+import sqlite3 
+from datetime import datetime, date 
+import tkinter as tk 
 from tkinter import ttk, messagebox 
-from PIL import Image, ImageTk # For handling image and logo
+from PIL import Image, ImageTk 
 
-# Sqlite database file:
+# Database file:
 FILE = "ecotrack.db"
 
 LOGO = "logo.jpg"
@@ -22,7 +22,7 @@ TRANSPORT = {
 GOODLIMIT = 6.0
 OKLIMIT = 12.0
 
-# Colors used across the code user interface
+# Colors used across the code 
 LIGREEN = "#DFF5D8"
 DRGREEN = "#1F5F3B"
 YLW = "#FAF9E1"
@@ -30,7 +30,6 @@ DARK = "#1B3A2F"
 BRGREEN = "#8CCF9A"
 
 
-# Creating the database and logs table if it does not exist
 def createDtb():
     with sqlite3.connect(FILE) as conn:
         cur = conn.cursor()
@@ -50,14 +49,14 @@ def createDtb():
         conn.commit()
 
 
-# Calculate CO2 emissions based on category and distance
+# Calculate CO2 emissions based on time and distance
 def Emissions(category: str, km: float, hr: float) -> float:
     perunit = TRANSPORT[category]["kg_per_unit"]
     perhr = TRANSPORT[category].get("kg_per_hour", 0.0)
     return round((km * perunit) + (hr * perhr), 3)
 
 
-# Format date as YYYY-MM-DD for database stroage
+# Format date as YYYY-MM-DD
 def fmtDate(d: date) -> str:
     return d.isoformat()
 
@@ -72,7 +71,7 @@ def totalLimit(total_kg: float) -> str:
         return "HIGH (very high footprint today, try reducing emissions)"
 
 
-# Convert hours input to float, defaulting to 0 if empty
+# Convert hours input to float
 def crovertHours(s: str) -> float:
     s = s.strip()
     if not s:
@@ -117,15 +116,15 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
     def __init__(self):
         super().__init__() # Intialize main window settings
 
-        self.title("EcoTrack - Carbon Footprint Monitor") # For setting up window properties
+        self.title("EcoTrack - Carbon Footprint Monitor") 
         self.geometry("920x560")
         self.minsize(880, 520)
 
         self.configure(bg=LIGREEN)
-        createDtb() # Creating database on startup
+        createDtb() 
 
         # Style
-        self.style = ttk.Style(self) # Configuring ttk styles for a green eco- friendly layout
+        self.style = ttk.Style(self) # Green eco- friendly layout
         try:
             self.style.theme_use("clam")
         except Exception:
@@ -169,7 +168,7 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
             background=[("active", "#F1F0D2"), ("pressed", "#E7E6C2")],
         )
 
-        # Header section which includes the title, slogan and the logo
+        # Title, slogan and the logo
         header = ttk.Frame(self, padding=12, style="Green.TFrame")
         header.pack(fill="x")
 
@@ -197,7 +196,7 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
 
         # Tabs
         self.nb = ttk.Notebook(self)
-        self.nb.pack(fill="both", expand=True, padx=12, pady=(0, 12)) # Notebook for switching between adding logos and history
+        self.nb.pack(fill="both", expand=True, padx=12, pady=(0, 12)) # Switching between adding logs and history
 
         self.tab_log = ttk.Frame(self.nb, padding=12, style="Green.TFrame")
         self.tab_history = ttk.Frame(self.nb, padding=12, style="Green.TFrame")
@@ -214,7 +213,7 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
         self.historyLoad()
         self.upt()
 
-    # Ouiz tab to for collecting user awareness and feedback
+    # Collecting user awareness and feedback
     def quiz(self):
         ttk.Label(
             self.tab_quiz,
@@ -276,7 +275,7 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
         self.btn(btn_row, "Submit", self.submitQuiz, side="left") #
         self.btn(btn_row, "Clear", self.clearQuiz, side="left", padx=8)
 
-    # Validating  quiz answers and display results
+    # Checking Quiz answers and display results
     def submitQuiz(self):
         if not self.q1_var.get() or not self.q2_var.get() or not self.q3_var.get():
             messagebox.showerror("Quiz", "Please answer all 3 questions")
@@ -310,7 +309,7 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
         self.q2_var.set("")
         self.q3_var.set("")
 
-    # Creating a styled button wrapped inside a colored structure
+    # Creating a styled button wrapped inside a colored border
     def btn(self, parent, text, command, side="left", padx=0, pady=0, anchor=None):
         bg = tk.Frame(parent, bg=DRGREEN, padx=4, pady=4)
         if anchor is not None:
@@ -625,4 +624,3 @@ class Main(tk.Tk):  # Main EcoTrack User Interface window
 # For starting the EcoTrack user interface
 if __name__ == "__main__":
     Main().mainloop()
-
